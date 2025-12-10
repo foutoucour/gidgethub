@@ -32,7 +32,7 @@ from . import (
     RateLimitExceeded,
     RedirectionException,
     ValidationError,
-    ValidationFailure,
+    ValidationFailure, SecondaryRateLimitExceeded,
 )
 
 
@@ -306,9 +306,9 @@ def secondary_rate_limit_retry(max_retries: int, base_delay: int, wrapped: bool 
                         raise
 
                     if retries >= max_retries:
-                        raise RuntimeError(
-                            f"GitHub rate limit exceeded after {max_retries} retries. "
-                            f"Status: {e.status_code}"
+                        raise SecondaryRateLimitExceeded(
+                            http.HTTPStatus(e.status_code),
+                            headers=e.headers,
                         ) from e
 
                     retry_after = e.headers.get("retry-after") or e.headers.get("Retry-After")
@@ -342,6 +342,7 @@ def secondary_rate_limit_retry(max_retries: int, base_delay: int, wrapped: bool 
 
                     time.sleep(delay)
                     retries += 1
+            return None
 
         if wrapped:
             return wrapper
